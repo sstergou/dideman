@@ -853,6 +853,12 @@ class PermanentManager(models.Manager):
         ids = [row[0] for row in cursor.fetchall()]
         return self.filter(parent_id__in=ids)
 
+    def permanent_post_in_organization_api(self, org_id):
+        cursor = connection.cursor()
+        cursor.execute(sql.permanent_post_in_organization.format(org_id))
+        ids = [row[0] for row in cursor.fetchall()]
+        return self.filter(parent_id__in=ids)
+
     def serving_in_organization(self, org_id):
         cursor = connection.cursor()
         cursor.execute(
@@ -1025,6 +1031,19 @@ class Permanent(Employee):
         else:
             return '-'
     permanent_post.short_description = u'Οργανική θέση'
+
+    def permanent_post_ends(self):
+        if self.has_permanent_post:
+            permanent_posts = Placement.objects.filter(
+             employee=self, type__name=u'Οργανική').order_by('-date_from')
+            if permanent_posts[0]:
+                if permanent_posts[0].date_to == "30/06"+current_year_date_from:
+                    return permanent_posts[0] if permanent_posts else '-'
+            return permanent_posts[0] if permanent_posts else '-'
+        else:
+            return '-'
+    permanent_post_ends.short_description = u'Οργανική θέση μετά την 1/7'
+
 
     def temporary_position(self):
         if self.has_permanent_post:
