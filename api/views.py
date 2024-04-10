@@ -26,6 +26,21 @@ def permanent(request):
     except Exception as e:
         return HttpResponse(json.dumps({"data":[], "error": e.message}))
 
+def schools(request):
+    try:
+        if 'key' in request.GET and request.GET['key'] == SETTINGS['api_key']:
+            sch = School.objects.all().exclude(email__exact='')
+            data = {"data":
+                    [{"name": unicode(k.name),
+                      "email": k.email,
+                      "code": k.code} for k in sch],
+                    "error": "" }
+
+            return HttpResponse(json.dumps(data), content_type='application/json')
+        else:
+            return HttpResponse(json.dumps({"data":[], "error": "parameters error"}))
+    except Exception as e:
+        return HttpResponse(json.dumps({"data":[], "error": e.message}))
 
 def schoolposts(request):
     try:

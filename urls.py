@@ -19,6 +19,8 @@ urlpatterns = patterns(
         'dideman.api.views.permanent'),
     url(r'^api/schoolposts/',
         'dideman.api.views.schoolposts'),
+    url(r'^api/schools/',
+        'dideman.api.views.schools'),
     url(r'^employee/help/',
         'dideman.dide.employee.match.help'),
     url(r'^salary/help/',
