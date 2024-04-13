@@ -64,11 +64,15 @@ def schoolposts(request):
                 prm = Permanent.objects.permanent_post_in_organization_api(school_found)\
                                    .filter(currently_serves=True)#, has_permanent_post=True)
                 for o in prm:
-                    if o.permanent_post().date_to is not None:
-                        if o.permanent_post().date_to < datetime.date(datetime.date.today().year, 9, 1):
-                            #import pdb; pdb.set_trace()
-                            #prm = prm.exclude(id=o.id)
-                            l.append(o.id)
+                    try:
+                        if o.permanent_post().date_to is not None:
+                            if o.permanent_post().date_to < datetime.date(datetime.date.today().year, 9, 1):
+                                l.append(o.id)
+                    except Exception as err:
+                        print o
+                        print(type(err))    # the exception type
+                        print(err.args)     # arguments stored in .args
+                        print(err) 
                 prm = Permanent.objects.permanent_post_in_organization_api(school_found)\
                                    .filter(currently_serves=True).exclude(pk__in=l)
                 
