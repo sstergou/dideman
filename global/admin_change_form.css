@@ -1,3 +1,8 @@
+#branding h1, #branding h1 a:link, #branding h1 a:visited {
+    color: #eee;
+    font-weight: bold;
+}
+
 .form_nav > li {
     display: inline;
     margin-left: 0;
@@ -28,16 +33,22 @@
 }
 
 #content {
-    margin-top: 70px;
+    margin-top: 90px;
+}
+#content-related {
+    float: right;
+    width: 22em;
+    position: relative;
+    margin-right: -23em;
 }
 .change-form #content {
-    margin: 100px 10px;
+    margin: 140px 10px;
 }
 .change-list #content {
-    margin: 70px 10px;
+    margin: 90px 10px;
 }
 .dashboard #content {
-    margin: 60px 10px;
+    margin: 80px 10px;
 }
 .login #content {
     margin: 15px 10px;
@@ -60,4 +71,19 @@
     z-index: 10001;
     background-color: white;
 /*    border-bottom: 1px solid rgb(204, 204, 204); */
+}
+#changelist table {
+    white-space: nowrap;
+    width: 100%;
+}
+
+#changelist-filter a {
+    /*display: block;*/
+    color: #999;
+}
+
+.change-list .filtered .results, .change-list .filtered .paginator,
+.filtered #toolbar, .filtered div.xfull {
+    margin-right: 280px;
+    width: auto;
 }

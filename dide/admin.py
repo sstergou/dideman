@@ -3,7 +3,7 @@ from __future__ import unicode_literals
 from dideman.private_teachers.models import PrivateTeacher
 from django.contrib import admin, messages
 from django.contrib.admin import helpers
-from django.conf.urls.defaults import *
+from django.conf.urls import *
 from django.core.urlresolvers import reverse
 from django.forms.models import inlineformset_factory
 from django.template.response import TemplateResponse
@@ -16,12 +16,13 @@ from filters import *
 from applications.filters import FinalisedFilter
 from models import (
                     GeoSchool, 
-                    TransferArea, Island, Leave, Responsibility, Profession,
+                    TransferArea, Island, Leave, AdministrativeLeave, PermanentLeave,
+                    Responsibility, Profession,
                     Promotion, PromotionNew, NonPermanentType, Administrative,
                     NonPermanent, Permanent, Employee, DegreeCategory,
                     SchoolType, School, OtherOrganization, PlacementType,
                     Placement, EmployeeLeave, EmployeeResponsibility,
-                    NonPermanentLeave, LeavePeriod,
+                    NonPermanentLeave,# LeavePeriod,
                     EmployeeDegree, Child, Loan, SocialSecurity,
                     LoanCategory, Service, Settings, ApplicationSet,
                     MoveInside, TemporaryPosition,
@@ -47,6 +48,8 @@ from django.contrib.auth.admin import UserAdmin
 from django.contrib.auth.models import User
 from dideman.dide.views.views import index
 from django.contrib.admin.sites import AdminSite
+
+
 import zipfile, os
 
 
@@ -68,24 +71,24 @@ class NonPermanentInsuranceFileAdmin(DideAdmin):
             self.message_user(request, msg, level=messages.ERROR)
 
             
-class PaymentFilePDFAdmin(DideAdmin):
-    readonly_fields = ['status', 'extracted_files']
-    list_display = ('description', 'status', 'extracted_files', 'pdf_file_type')
-    search_fields = ('description',)
-    actions = [PDFReadAction(u'Δημιουργία PDF')]
+#class PaymentFilePDFAdmin(DideAdmin):
+#    readonly_fields = ['status', 'extracted_files']
+#    list_display = ('description', 'status', 'extracted_files', 'pdf_file_type')
+#    search_fields = ('description',)
+#    actions = [PDFReadAction(u'Δημιουργία PDF')]
 
-    def save_model(self, request, obj, form, change):
-        pf = force_unicode(obj.pdf_file.name, 'cp737', 'ignore')
-        if pf[-4:] == ".pdf":
-            obj.save()
-        else:
-            msg = u'Η εγγραφή δεν αποθηκεύθηκε. Ένα ή περισσότερα αρχεία δεν είναι της μορφής pdf.'
-            self.message_user(request, msg, level=messages.ERROR)
+#    def save_model(self, request, obj, form, change):
+#        pf = force_unicode(obj.pdf_file.name, 'cp737', 'ignore')
+#        if pf[-4:] == ".pdf":
+#            obj.save()
+#        else:
+#            msg = u'Η εγγραφή δεν αποθηκεύθηκε. Ένα ή περισσότερα αρχεία δεν είναι της μορφής pdf.'
+#            self.message_user(request, msg, level=messages.ERROR)
 
-    def get_readonly_fields(self, request, obj=None):
-        if obj:
-            return ['pdf_file' ] + self.readonly_fields                
-        return self.readonly_fields
+#    def get_readonly_fields(self, request, obj=None):
+#        if obj:
+#            return ['pdf_file' ] + self.readonly_fields                
+#        return self.readonly_fields
 
 
 class PaymentFileNameAdmin(DideAdmin):
@@ -260,9 +263,9 @@ class LeaveInline(admin.TabularInline):
     extra = 0
 
 
-class LeavePeriodInline(admin.TabularInline):
-    model = LeavePeriod
-    extra = 0
+#class LeavePeriodInline(admin.TabularInline):
+#    model = LeavePeriod
+#    extra = 0
 
 
 class DegreeInline(admin.TabularInline):
@@ -334,7 +337,7 @@ class TemporaryPositionAllAreasAdmin(ApplicationAdmin):
 
 economic_fieldset = (u'Οικονομικά στοιχεία', {
         'fields': ['vat_number', 'tax_office', 'bank', 'bank_account_number',
-                   'iban', 'social_security_registration_number', 'ama', 'before_93',
+                   'iban', 'ama', 'before_93', # 'social_security_registration_number', 'ama', 'before_93',
                    'has_family_subsidy', 'other_social_security',
                    'organization_paying', 'show_mass_pay']})
 
@@ -342,6 +345,7 @@ to_permanent = EmployeeBecome('Μετατροπή σε Μόνιμο', Permanent)
 to_non_permanent = EmployeeBecome('Μετατροπή σε Αναπληρωτή', NonPermanent)
 to_private_teacher = EmployeeBecome('Μετατροπή σε Ιδιωτικό', PrivateTeacher)
 to_administrative = EmployeeBecome('Μετατροπή σε Διοικητικό', Administrative)
+
 
 class EmployeeAdmin(DideAdmin):
 
@@ -365,13 +369,13 @@ class EmployeeAdmin(DideAdmin):
                            'profession_description',
                            'identity_number', 'telephone_number1',
                            'telephone_number2', 'email', 'marital_status',
-                           'birth_date', 'hours_current',
+                           'birth_date', 'social_security_registration_number', 'hours_current',
                            'organization_serving', 'date_created']}),
         economic_fieldset]
     readonly_fields = ['last_placement', 'organization_serving',
                        'date_created', 'profession_description', 'show_photo']
     list_max_show_all = 10000
-    list_per_page = 50
+    list_per_page = 100 #from 50
     actions = [FieldAction(u'Αναστολή υπηρέτησης', 'currently_serves', lambda: False),
                ShowOption(u'Eμφάνιση Μισθοδοτικών Καταστάσεων', 'show_mass_pay'),
                HideOption(u'Απόκρυψη Μισθοδοτικών Καταστάσεων', 'show_mass_pay'),
@@ -402,7 +406,6 @@ class LeaveAdmin(DideAdmin):
     search_fields = ('name', )
     list_display = ('name', 'type', 'for_non_permanents')
 
-
 class SchoolCommissionAdmin(DideAdmin):
     form = SchoolCommissionForm
     search_fields= ('municipality', )
@@ -432,9 +435,11 @@ class PermanentAdmin(EmployeeAdmin):
         css = {'all': ('css/no-addanother-button.css',
                          '/static/admin/css/widgets.css', '/static/admin/css/my_forms.css')}
     
-    list_display = ['lastname', 'firstname', 'fathername',
-                    'registration_number', 'profession', 'date_hired',
+    list_display = ['registration_number', 'lastname', 'firstname', 'fathername',
+                    'profession', 'date_hired',
                     'permanent_post', 'organization_serving']
+    list_display_links = ['lastname']
+
     inlines = EmployeeAdmin.inlines + [PromotionNewInline, PromotionInline, PlacementInline,
                                        ServiceInline, PartialServiceInline, LeaveInline, ResponsibilityInline]
 
@@ -460,14 +465,15 @@ class PermanentAdmin(EmployeeAdmin):
                                                EmployeeWithOutLeaveFilter,
                                                NextHoursReductionFilter,
                                                RecognisedExperienceN44522017Filter)
-    list_per_page = 50
+    list_per_page = 100 # from 50
     fieldsets = [
         ('Γενικά Στοιχεία', {
             'fields': [ 'show_photo',
                 'transfer_area',
                     'lastname', 'firstname', 'fathername', 'mothername', 'notes',
                     'sex', 'registration_number', 'profession',
-                    'profession_description', 'permanent_post',
+                    'profession_description', 'second_profession', 'second_profession_description',
+                    'second_profession_order', 'permanent_post',
                     'temporary_position', 'organization_serving',
                     'study_years', 'serving_type', 'date_hired',
                     'order_hired', 'is_permanent',
@@ -475,11 +481,14 @@ class PermanentAdmin(EmployeeAdmin):
                     'address_postcode','address_city', 'identity_number',
                     'inaccessible_school', 'telephone_number1',
                     'telephone_number2', 'email', 'marital_status',
-                    'birth_date', 'date_created', 'educated']}), #Removed 'hours_current',
+                    'birth_date', 'social_security_registration_number', 'date_created', 'educated']}), #Removed 'hours_current',
         ('Στοιχεία Προϋπηρεσίας', {
                 'fields': ['currently_serves',
                            'recognised_experience',
                            'formatted_recognised_experience',
+                           'payment_start_date_auto',
+                           'salary_experience',
+                           #'salary_start_date_auto', #To implement soon 19/6/23
                            'checked_service',
                            #'recognised_experience_n4354_2015', Removed by request
                            'recognised_experience_n4452_2017',
@@ -487,7 +496,7 @@ class PermanentAdmin(EmployeeAdmin):
                            'non_educational_experience',
                            'calculable_not_service', 'not_service_existing',
                            'total_service',
-                           'payment_start_date_auto',
+                           
                            'payment_start_date_manual',
                            'educational_service',
                            'hours', 'hours_next',
@@ -497,11 +506,11 @@ class PermanentAdmin(EmployeeAdmin):
     readonly_fields = EmployeeAdmin.readonly_fields + \
         ['permanent_post', 'temporary_position', 'hours', 'hours_next', 'total_service',
          'formatted_recognised_experience', 'formatted_recognised_experience_n4452_2017', 'payment_start_date_auto',
-         'rank', 'ranknew', 'profession_description', 'calculable_not_service',
+         'rank', 'ranknew', 'profession_description','second_profession_description', 'calculable_not_service',
          'date_created', 'educational_service']
 
-    actions = sorted([to_private_teacher, to_administrative,
-      CSVReport(add=['permanent_post', 'organization_serving',
+    actions = sorted([#to_private_teacher, to_administrative,
+      CSVReport(add=['permanent_post', 'organization_serving', 'date_hired',
                                      'permanent_post_island',
                                      'temporary_position',
                                      'hours', 'hours_next',
@@ -550,7 +559,7 @@ class AdministrativeAdmin(PermanentAdmin):
                         'address', 'address_postcode','address_city',
                         'telephone_number1',
                         'telephone_number2', 'email', 'marital_status',
-                        'birth_date', 'hours_current', 'date_created']}),
+                        'birth_date', 'social_security_registration_number', 'hours_current', 'date_created']}),
             ('Στοιχεία Προϋπηρεσίας', {
                     'fields': ['currently_serves',
                                'recognised_experience',
@@ -570,7 +579,7 @@ class AdministrativeAdmin(PermanentAdmin):
              'rank', 'ranknew', 'profession_description', 'calculable_not_service',
              'date_created']
 
-    actions = sorted([to_permanent, to_private_teacher,
+    actions = sorted([#to_permanent, to_private_teacher,
       CSVReport(add=['permanent_post', 
                                     'organization_serving',
                                     'permanent_post_island',
@@ -587,6 +596,7 @@ class EmployeeLeaveForm(ModelForm):
 
     class Meta:
         model = EmployeeLeave
+        fields = '__all__'
 
     def __init__(self, *args, **kwargs):
         super(EmployeeLeaveForm, self).__init__(*args, **kwargs)
@@ -610,29 +620,31 @@ class NonPermanentLeaveForm(ModelForm):
     
     class Meta:
         model = NonPermanentLeave
+        fields = '__all__'
         
     def __init__(self, *args, **kwargs):
         super(NonPermanentLeaveForm, self).__init__(*args, **kwargs)
         self.fields['leave'] = LeaveChoiceField(label=u'Κατηγορία άδειας', for_non_permanents=True)
 
+
 class NonPermanentLeaveAdmin(DideAdmin):
-    inlines = [LeavePeriodInline]
+    #inlines = [LeavePeriodInline]
     search_fields = ('non_permanent__lastname',
                      'non_permanent__vat_number')
-    list_display = ('non_permanent', 'leave', 'date_from', 'date_to', 'duration')
-    list_filter = (NonPermanentLeaveFilter, 'non_permanent__profession__unified_profession',
+    list_display = ('employee', 'leave', 'date_from', 'date_to', 'duration')
+    list_filter = (NonPermanentLeaveFilter,# 'non_permanent__profession__unified_profession',
                    LeaveDateToFilter, LeaveDateFromFilter)
     actions = [CSVReport(add=['non_permanent__profession__id', 'non_permanent__organization_serving'])]
     form = NonPermanentLeaveForm
     
     def print_leave(self, request, employeeleave_id):
         from django.http import HttpResponse
-        from reports.non_permanent_leave import non_permanent_leave_docx_reports
+        #from reports.permanentleave import leave_docx_reports
         leave_qs = NonPermanentLeave.objects.filter(pk=employeeleave_id)
         if len(leave_qs) != 1:
             return HttpResponse(u'Η άδεια δεν βρέθηκε')
         leave = leave_qs[0]
-        for r in non_permanent_leave_docx_reports:
+        for r in leave_docx_reports:
             if r.short_description == leave.leave.name:
                 return r(self, request, leave_qs)
         return HttpResponse(u'Δεν βρέθηκε αναφορά για την άδεια')
@@ -640,8 +652,7 @@ class NonPermanentLeaveAdmin(DideAdmin):
     def get_urls(self):
         from django.conf.urls import patterns, url      
         return patterns('', url(r'^print/([0-9]+)/$',
-                          self.admin_site.admin_view(self.print_leave))) + super(NonPermanentLeaveAdmin, self).get_urls();
-            
+                          self.admin_site.admin_view(self.print_leave))) + super(NonPermanentLeaveAdmin, self).get_urls();            
 
 
 class EmployeeLeaveAdmin(DideAdmin):
@@ -681,16 +692,123 @@ class EmployeeLeaveAdmin(DideAdmin):
                           name='dide_employeeleave_print'))
 
 
+class AdministrativeLeaveForm(ModelForm):
+
+    class Meta:
+        model = AdministrativeLeave
+        fields = '__all__'
+
+    def __init__(self, *args, **kwargs):
+        super(AdministrativeLeaveForm, self).__init__(*args, **kwargs)
+        self.fields['employee'] = AdministrativeChoiceField(label=u'Υπάλληλος')
+        self.fields['leave'] = LeaveChoiceField(label=u'Κατηγορία άδειας', for_non_permanents=False)
+
+class AdministrativeChoiceField(ModelChoiceField):
+    def __init__(self, *args, **kwargs):
+	self.choices = Administrative.objects.choices()
+        return super(AdministrativeChoiceField, self).__init__(Employee.objects, *args, **kwargs)
+
+
+class AdministrativeLeaveAdmin(DideAdmin):
+
+    class Media:
+        css = {'all': ('/static/admin/css/widgets.css',)}
+        js = ('/static/admin/js/calendar.js',
+              '/static/admin/js/admin/DateTimeShortcuts.js', 'js/dide.js')
+    form = AdministrativeLeaveForm
+    search_fields = ('employee__lastname',
+                     'employee__permanent__registration_number')
+    list_display = ('employee', 'profession', 'category', 'date_from',
+                    'date_to', 'duration')
+    list_filter = (AdministrativeLeaveFilter, 'employee__profession__unified_profession',
+                   LeaveDateToFilter, LeaveDateFromFilter)
+    actions = [CSVReport(add=['employee__profession__id',
+                              'organization_serving', 'permanent_post'])] + \
+        sorted(leave_docx_reports, key=lambda k: k.short_description)
+
+    def print_leave(self, request, employeeleave_id):
+        from django.http import HttpResponse
+        leave_qs = AdministrativeLeave.objects.filter(pk=employeeleave_id)
+	if (len(leave_qs) != 1):
+            return HttpResponse(u'Η άδεια δεν βρέθηκε')
+	leave = leave_qs[0]
+
+	for r in leave_docx_reports:
+            if r.short_description == leave.leave.name:
+                return r(self, request, leave_qs)
+        return HttpResponse(u'Δεν βρέθηκε αναφορά για την άδεια')
+
+    def get_urls(self):
+        from django.conf.urls import patterns, url
+        return super(AdministrativeLeaveAdmin, self).get_urls() + \
+            patterns('', url(r'^print/(\d+)$',
+                          self.admin_site.admin_view(self.print_leave),
+                          name='dide_administrativeleave_print'))
+
+class PermanentLeaveForm(ModelForm):
+
+    class Meta:
+        model = PermanentLeave
+	fields = '__all__'
+
+    def __init__(self, *args, **kwargs):
+	super(PermanentLeaveForm, self).__init__(*args, **kwargs)
+        self.fields['employee'] = PermanentChoiceField(label=u'Μόνιμος εκπαιδευτικός')
+        self.fields['leave'] = LeaveChoiceField(label=u'Κατηγορία άδειας', for_non_permanents=False)
+
+class PermanentChoiceField(ModelChoiceField):
+    def __init__(self, *args, **kwargs):
+        self.choices = Permanent.objects.choices()	
+	return super(PermanentChoiceField, self).__init__(Employee.objects, *args, **kwargs)
+
+class PermanentLeaveAdmin(DideAdmin): 
+
+    class Media:
+        css = {'all': ('/static/admin/css/widgets.css',)}
+        js = ('/static/admin/js/calendar.js',
+              '/static/admin/js/admin/DateTimeShortcuts.js', 'js/dide.js')
+    form = PermanentLeaveForm
+    search_fields = ('employee__lastname',
+                     'employee__permanent__registration_number')
+    list_display = ('employee', 'profession', 'category', 'date_from',
+                    'date_to', 'duration')
+    list_filter = (PermanentLeaveFilter, 'employee__profession__unified_profession',
+                   LeaveDateToFilter, LeaveDateFromFilter)
+    actions = [CSVReport(add=['employee__profession__id',
+                              'organization_serving', 'permanent_post'])] + \
+        sorted(leave_docx_reports, key=lambda k: k.short_description)
+    
+    def print_leave(self, request, employeeleave_id):
+        from django.http import HttpResponse
+        leave_qs = PermanentLeave.objects.filter(pk=employeeleave_id)
+	if (len(leave_qs) != 1):
+            return HttpResponse(u'Η άδεια δεν βρέθηκε')
+	leave = leave_qs[0]
+
+	for r in leave_docx_reports:
+            if r.short_description == leave.leave.name:
+                return r(self, request, leave_qs)
+        return HttpResponse(u'Δεν βρέθηκε αναφορά για την άδεια')
+
+    def get_urls(self):
+        from django.conf.urls import patterns, url
+        return super(PermanentLeaveAdmin, self).get_urls() + \
+            patterns('', url(r'^print/(\d+)$',
+                          self.admin_site.admin_view(self.print_leave),
+                          name='dide_permanentleave_print'))
+
+    
 class NonPermanentAdmin(EmployeeAdmin):
 
     class Media:
         css = {'all': ('css/no-addanother-button.css',
                          '/static/admin/css/widgets.css', '/static/admin/css/my_forms.css')}
 
-    list_display = ['lastname', 'firstname', 'fathername',
+    list_display = ['vat_number', 'lastname', 'firstname', 'fathername',
                     'profession', 'current_placement']
+    list_display_links = ['lastname']
     search_fields = ('lastname', 'identity_number', 'vat_number')
-    list_per_page = 50
+    list_per_page = 100 #from 50
 
     fieldsets = [
         ('Στοιχεία μη-μόνιμου', {
@@ -703,7 +821,7 @@ class NonPermanentAdmin(EmployeeAdmin):
                     'study_years', 'show_exp_report',
                     'identity_number', 'address', 'address_postcode','address_city',
                     'telephone_number1',
-                    'telephone_number2', 'email', 'marital_status', 'birth_date',
+                       'telephone_number2', 'email', 'marital_status', 'birth_date', 'social_security_registration_number',
                     'date_created', 'pedagogical_sufficiency', 'educational_level',
             'ergani_new',        
             'social_security_number', 'citizenship_code']}),
@@ -719,7 +837,7 @@ class NonPermanentAdmin(EmployeeAdmin):
                    SubstituteOrderFilter, 'profession__unified_profession',
                    NonPermanentOrganizationServingFilter,
                    NonPermanentWithTotalExtraPosition]
-    actions = sorted([to_permanent, to_administrative, to_private_teacher,
+    actions = sorted([#to_permanent, to_administrative, to_private_teacher,
                     CSVReport(add=['current_placement', 'organization_serving', 'profession__description', 'order', 'type'],
                         exclude=['photo','photo_type']),
                   ] + nonpermanent_docx_reports + [XMLWriteE3Action(u'Δημιουργία Εργάνη XML E3')] + [XMLWriteE7Action(u'Δημιουργία Εργάνη XML E7')], key=lambda k: k.short_description)
@@ -745,7 +863,8 @@ class GeoSchoolAdmin(admin.ModelAdmin):
 map(lambda t: admin.site.register(*t), (
     (GeoSchool, GeoSchoolAdmin),
     (Settings, SettingsAdmin),
-    (Leave, LeaveAdmin),
+    (AdministrativeLeave, AdministrativeLeaveAdmin),
+    (PermanentLeave, PermanentLeaveAdmin),
     (Permanent, PermanentAdmin),
     (Administrative, AdministrativeAdmin),
     (Profession, ProfessionAdmin),
@@ -756,7 +875,7 @@ map(lambda t: admin.site.register(*t), (
     (NonPermanent, NonPermanentAdmin),
     (NonPermanentType, NonPermanentTypeAdmin),
     (PlacementType, PlacementTypeAdmin),
-    (EmployeeLeave, EmployeeLeaveAdmin),
+#    (EmployeeLeave, EmployeeLeaveAdmin),
     (NonPermanentLeave, NonPermanentLeaveAdmin),
     (MoveInside, MoveInsideAdmin),
     (TemporaryPosition, TemporaryPositionAdmin),
@@ -765,12 +884,13 @@ map(lambda t: admin.site.register(*t), (
     (SchoolCommission, SchoolCommissionAdmin),
     (PaymentCategoryTitle, PaymentCategoryTitleAdmin),
     (PaymentReportType, PaymentReportTypeAdmin),
-    (PaymentFilePDF, PaymentFilePDFAdmin),
+#    (PaymentFilePDF, PaymentFilePDFAdmin),
     (PaymentFileName, PaymentFileNameAdmin),
     (NonPermanentInsuranceFile, NonPermanentInsuranceFileAdmin),
     (RankCode, RankCodeAdmin),
     (PaymentCode, PaymentCodeAdmin),
-    (SocialSecurity, SocialSecurityAdmin)
+    (SocialSecurity, SocialSecurityAdmin),
+    (Leave, LeaveAdmin)
 
 ))
 
@@ -789,3 +909,5 @@ UserAdmin.list_display = ('username', 'first_name', 'last_name', 'is_active', 'i
 
 admin.site.unregister(User)
 admin.site.register(User, UserAdmin)
+import admin_interface
+admin.site.unregister(admin_interface.models.Theme)

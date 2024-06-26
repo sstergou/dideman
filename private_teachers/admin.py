@@ -12,6 +12,10 @@ to_non_permanent = EmployeeBecome('Μετατροπή σε Αναπληρωτή'
 to_private_teacher = EmployeeBecome('Μετατροπή σε Ιδιωτικό', PrivateTeacher)
 to_administrative = EmployeeBecome('Μετατροπή σε Διοικητικό', Administrative)
 
+#to_permanent = None
+#to_non_permanent = None
+#to_private_teacher = None
+#to_administrative = None
 
 class LeaveWithoutPayInline(admin.TabularInline):
     model = LeaveWithoutPay
@@ -30,7 +34,7 @@ class PrivateTeacherAdmin(DideAdmin):
         js = ('js/dide.js', )
 
 
-    actions = [to_permanent, to_non_permanent, to_administrative,
+    actions = [#to_permanent, to_non_permanent, to_administrative,
         CSVReport(add=["total_experience", "total_service", "rank",
                               "next_rank_date", 'total_service_311215'])]
     list_display = ['lastname', 'firstname', 'profession', 'school', 'total_service_311215', 'active']
@@ -42,7 +46,8 @@ class PrivateTeacherAdmin(DideAdmin):
             'fields': [
                     'lastname', 'firstname', 'fathername', 'sex', 'profession',
                     'profession_description', 'series_number',
-                    'total_experience', 'total_service', 'total_service_today', 'total_service_311215', 'rank', 'next_rank_date',
+                    'total_experience', 'total_service', 'total_service_today', 'total_service_311215', 
+                    'rank', 'next_rank_date',
                     'school', 'current_placement_date', 'current_hours',
                     'identity_number', 'telephone_number1',
                     'telephone_number2', 'email', 'birth_date', 'not_service_days',

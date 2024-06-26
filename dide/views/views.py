@@ -16,11 +16,26 @@ from django.utils import six
 from django.utils.text import capfirst
 from django.views.decorators.cache import never_cache
 from django.db.models import Q
-from django.conf.urls.defaults import *
+from django.conf.urls import *
 from django.core.urlresolvers import reverse, NoReverseMatch
 from cStringIO import StringIO
 import datetime, base64
 
+
+def find_duplicates():
+    l = []
+    r = 0
+    pl = Permanent.objects.all()
+    nl = NonPermanent.objects.exclude(vat_number=None)
+
+    for pitem in pl:
+        for nitem in nl:
+            if (pitem.firstname == nitem.firstname) and (pitem.lastname == nitem.lastname) and (pitem.fathername == nitem.fathername) and (pitem.profession == nitem.profession):
+                l.append(pitem)
+                r += 1
+                l.append(nitem)
+
+    return l, r
 
 @never_cache
 def index(self, request, extra_context=None):
@@ -43,21 +58,34 @@ def index(self, request, extra_context=None):
                                                 date_modified__month=today.month,
                                                 date_modified__day=today.day).count()
     for model, model_admin in self._registry.items():
-        app_label = model._meta.app_label
-        has_module_perms = user.has_module_perms(app_label)
+        if model._meta.app_label == "dide":
+            app_label = model._meta.app_label
+            app_text = u"Διεύθυνση"
+        elif model._meta.app_label == "auth":
+            app_label = model._meta.app_label
+            app_text = u"Χρήστες"
+        elif model._meta.app_label == "private_teachers":
+            app_label = model._meta.app_label
+            app_text = u"Ιδιωτικά Σχολεία"
+        else:
+            app_text = model._meta.app_label
+            app_label = model._meta.app_label
 
+        has_module_perms = user.has_module_perms(app_label)
         if has_module_perms:
             perms = model_admin.get_model_perms(request)
 
             # Check whether user has any perm for this module.
             # If so, add the module to the model_list.
             if True in perms.values():
-                info = (app_label, model._meta.module_name)
+                info = (app_label, model._meta.model_name)
                 search_model.append(model)
                 model_dict = {
                     'name': capfirst(model._meta.verbose_name_plural),
                     'perms': perms,
                 }
+
+                
                 if perms.get('change', False):
                     try:
                         model_dict['admin_url'] = reverse('admin:%s_%s_changelist' % info, current_app=self.name)
@@ -72,8 +100,7 @@ def index(self, request, extra_context=None):
                     app_dict[app_label]['models'].append(model_dict)
                 else:
                     app_dict[app_label] = {
-                        'name': app_label.title(),
-                        #'app_url': reverse('admin:app_list', kwargs={'app_label': app_label}, current_app=self.name),
+                        'name': app_text,
                         'has_module_perms': has_module_perms,
                         'models': [model_dict],
                     }
@@ -91,17 +118,17 @@ def index(self, request, extra_context=None):
     y1 = datetime.date.today().year if datetime.date.today().month > 8 and datetime.date.today().month <= 12 else datetime.date.today().year - 1
     y2 = datetime.date.today().year if datetime.date.today().month >= 1 and datetime.date.today().month < 9 else datetime.date.today().year + 1
 
-    tot_non = NonPermanent.objects.substitutes_in_date_range(date_from='%d-09-01' % y1, date_to='%d-08-31' % y2).count() 
+    tot_non = NonPermanent.objects.substitutes_in_date_range(date_from='%d-09-01' % y1, date_to='%d-08-31' % y2) 
 
     tot_priv = PrivateTeacher.objects.filter(active__exact=1).count()
 
     tot_admin = Administrative.objects.filter(currently_serves=1).count()
-
+    dbls, l = find_duplicates()
     context = {
         'title': _('Site administration'),
         'app_list': app_list,
         'total_permanent': '%d' % tot_perm,
-        'total_nonpermanent': '%d' % tot_non,
+        'total_nonpermanent': '%d' % tot_non.count(),
         'total_private': '%d' % tot_priv,
         'total_administrative': '%d' % tot_admin,
         'yf': y1,
@@ -110,6 +137,8 @@ def index(self, request, extra_context=None):
         'photo_total': tot_pho,
         'today_mod_total': tot_day_mod,
         'django_version': 'Django ' + '.'.join(str(i) for i in djangoversion[:3]),
+        'total_dbl': l,
+
     }
     context.update(extra_context or {})
     if request.POST:
@@ -121,6 +150,12 @@ def index(self, request, extra_context=None):
                     if model.__name__ in ("Permanent", "NonPermanent", "Administrative"):
                         results[model._meta.verbose_name] = model.objects.exclude(photo__exact='').exclude(photo__isnull=True)
                         total_results += len(results[model._meta.verbose_name])
+            if request.POST['q'] == '/nonpermanent':
+                results['Ενεργοί αναπληρωτές'] = tot_non
+                total_results = tot_non.count()
+            elif request.POST['q'] == '/dublicates':
+                results['Διπλές Εγγραφές'] = dbls
+                total_results = l
             elif request.POST['q'] == '/lastedit':
                 for model in search_model:
                     if model.__name__ in ("Permanent", "NonPermanent", "Administrative", "PrivateTeacher"):
@@ -130,14 +165,15 @@ def index(self, request, extra_context=None):
                         total_results += len(results[model._meta.verbose_name])
             else:
                 for model in search_model:
+                    
                     if model.__name__ == "Permanent":
-                        results[model._meta.verbose_name] = model.objects.filter(Q(lastname__startswith=request.POST['q'].upper())
-                        | Q(vat_number__startswith=request.POST['q'])
-                        | Q(registration_number__startswith=request.POST['q']))
+                        results[model._meta.verbose_name] = model.objects.filter(Q(lastname__istartswith=request.POST['q'].upper())
+                        | Q(vat_number__istartswith=request.POST['q'])
+                        | Q(registration_number__istartswith=request.POST['q']))
                         total_results += len(results[model._meta.verbose_name])
                     if model.__name__ in ("NonPermanent", "Administrative", "PrivateTeacher"):
-                        results[model._meta.verbose_name] = model.objects.filter(Q(lastname__startswith=request.POST['q'].upper())
-                        | Q(vat_number__startswith=request.POST['q']))
+                        results[model._meta.verbose_name] = model.objects.filter(Q(lastname__istartswith=request.POST['q'].upper())
+                        | Q(vat_number__istartswith=request.POST['q']))
                         total_results += len(results[model._meta.verbose_name])
 
         context = {
@@ -190,7 +226,7 @@ def photo(request, emp_id):
     file = StringIO()
     file.write(base64.b64decode(emp.photo))
     file.seek(0)
-    response = HttpResponse(file.getvalue(), mimetype='image/%s' % emp.photo_type)
+    response = HttpResponse(file.getvalue(), content_type='image/%s' % emp.photo_type)
     file.close()
     return response
 

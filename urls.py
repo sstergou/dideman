@@ -1,10 +1,11 @@
-from django.conf.urls.defaults import patterns, include, url
+from django.conf.urls import patterns, include, url
 from django.contrib import admin
 #from dideman.dide.employee.decorators import match_required
 admin.autodiscover()
 
 urlpatterns = patterns(
     '',
+
     url(r'^admin/dide/photo/(?P<emp_id>\d+)/$',
         'dideman.dide.views.views.photo'),
     url(r'^admin/dide/photo_edit/(?P<emp_id>\d+)/$',
@@ -18,6 +19,8 @@ urlpatterns = patterns(
         'dideman.api.views.permanent'),
     url(r'^api/schoolposts/',
         'dideman.api.views.schoolposts'),
+    url(r'^api/schools/',
+        'dideman.api.views.schools'),
     url(r'^employee/help/',
         'dideman.dide.employee.match.help'),
     url(r'^salary/help/',

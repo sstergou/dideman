@@ -74,6 +74,7 @@ class PrivateTeacher(dide.Employee):
                      [DateInterval(l.recognised_experience)
                       for l in self.leavewithoutpay_set.all()],
                      DateInterval("000000"))
+        
         return total_experience - DateInterval(self.not_service_days) + dli
     total_service.short_description = u'Συνολική υπηρεσία'
 
@@ -118,14 +119,12 @@ class PrivateTeacher(dide.Employee):
                     total_experience = DateInterval("000000")
                 else:
                     total_experience = self.total_experience(periods)
-            #import pdb; pdb.set_trace()
             
         
         dli = reduce(operator.add,
                      [DateInterval(l.recognised_experience)
                       for l in self.leavewithoutpay_set.all()],
                      DateInterval("000000"))
-        #import pdb; pdb.set_trace() 
         return total_experience - DateInterval(self.not_service_days) + dli
     total_service_311215.short_description = u'Υπηρεσία μέχρι 31/12/2015'
 # --
@@ -148,16 +147,18 @@ class PrivateTeacher(dide.Employee):
         year = next_index((r, mk))
         when = DateInterval(years=year)
         interval = when - total_service
-
         if self.current_hours:
             if self.current_hours >= 18:
-                d = datetime.date.today() + datetime.timedelta(days=interval.total)
-                return d.strftime("%d-%m-%Y")
+                di = datetime.date.today() + datetime.timedelta(days=interval.total)
+                return di.strftime("%d-%m-%Y")
             else:
                 x360, x300 = self._total_days()
-                days = (when - DateInterval(x360) - self.postgrad_extra()).total300() - x300
-                d = self.current_placement_date + datetime.timedelta(days=int(days * (18 / self.current_hours) * (365/300)))
-                return d.strftime("%d-%m-%Y")
+                days =  (when - DateInterval(x360) - self.postgrad_extra()).total300() - x300
+                if self.current_placement_date:
+                    di = self.current_placement_date + datetime.timedelta(days=int(days * (18 / self.current_hours) * (365/300)))
+                else:
+                    di = datetime.timedelta(days=int(days * (18 / self.current_hours) * (365/300)))
+                return di.strftime("%d-%m-%Y")
         else:
             return "-"
     next_rank_date.short_description = u'Ημερομηνία αλλαγής Μ.Κ. (εκτίμηση)'
@@ -189,16 +190,19 @@ class WorkingPeriod(models.Model):
     comments = models.CharField(u'Σχόλια', max_length=255, null=True, blank=True)
 
     def range_experience(self, arange):
-        if self.hours_weekly >= self.full_week:
-            return arange.total
-        else:
-            dr = self.date_range()
-            if self.hours_total:
-                hours = self.hours_total * (arange.total / dr.total)
-                return (hours / self.full_week) * 6
+        try:
+            if self.hours_weekly >= self.full_week:
+                return arange.total
             else:
-                days = arange.total * (300 / 360)
-                return days * (self.hours_weekly / self.full_week)
+                dr = self.date_range()
+                if self.hours_total:
+                    hours = self.hours_total * (arange.total / dr.total)
+                    return (hours / self.full_week) * 6
+                else:
+                    days = arange.total * (300 / 360)
+                    return days * (self.hours_weekly / self.full_week)
+        except:
+            return 0
 
     def date_range(self):
         return DateRange(Date(self.date_from), Date(self.date_to))

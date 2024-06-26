@@ -6,7 +6,7 @@ from dideman.lib.date import *
 from dideman.dide.decorators import shorted
 from django.db.models import Max
 from django.db import connection, transaction
-from south.modelsinspector import add_introspection_rules
+#from south.modelsinspector import add_introspection_rules
 from django.db.models import Sum
 from dideman import settings
 from operator import itemgetter, concat
@@ -29,8 +29,12 @@ class NullableCharField(models.CharField):
     def get_db_prep_value(self, value, *args, **kwargs):
         return value or None
 
+    def deconstruct(self):
+        name, path, args, kwargs = super(NullableCharField, self).deconstruct()
+        return name, path, args, kwargs
 
-add_introspection_rules([], ['^dideman\.dide\.models\.NullableCharField'])
+
+#add_introspection_rules([], ['^dideman\.dide\.models\.NullableCharField'])
 
 
 class RankCode(models.Model):
@@ -64,7 +68,7 @@ class PaymentFilePDF(models.Model):
     id = models.AutoField(primary_key=True)
     pdf_file = models.FileField(u'Αρχείο', upload_to=timestampedfiles)
     description = models.CharField(u'Περιγραφή', max_length=255)
-    status = models.BooleanField(u'Κατάσταση', blank=True)
+    status = models.BooleanField(u'Κατάσταση', blank=True, default=None)
     extracted_files = models.IntegerField(u'Αρχεία που \
     δημιουργίθηκαν', null=True, blank=True)
     pdf_file_type = models.IntegerField(u'Τύπος αποδοχών', 
@@ -122,7 +126,7 @@ class PaymentFileName(models.Model):
     id = models.AutoField(primary_key=True)
     xml_file = models.FileField(upload_to="xmlfiles")
     description = models.CharField(u'Περιγραφή', max_length=255)
-    status = models.BooleanField(u'Κατάσταση', blank=True)
+    status = models.BooleanField(u'Κατάσταση', blank=True, default=0)
     imported_records = models.IntegerField(u'Εγγραφές που ενημερώθηκαν', 
                                            null=True, blank=True)
     taxed = models.IntegerField(u'Τύπος αποδοχών', choices=TAXED_TYPES, 
@@ -423,7 +427,7 @@ class Organization(models.Model):
     objects = OrganizationManager()
 
     name = models.CharField(u'Όνομα', max_length=100)
-    belongs = models.BooleanField(u'Ανήκει στην Δ.Δ.Ε. Δωδεκανήσου')
+    belongs = models.BooleanField(u'Ανήκει στην Δ.Δ.Ε. Δωδεκανήσου', default=None)
 
     def natural_key(self):
         return (self.name, )
@@ -482,14 +486,17 @@ class Leave(models.Model):
 
     name = models.CharField(max_length=200, verbose_name=u'Κατηγορία')
     type = models.CharField(max_length=15, verbose_name=u'Τύπος', choices=LEAVE_TYPES)
-    not_paying = models.BooleanField(verbose_name=u'Χωρίς αποδοχές')
-    is_service = models.BooleanField(verbose_name=u'Χρόνος κανονικής υπηρεσίας')
-    only_working_days = models.BooleanField(verbose_name=u'Μόνο εργάσιμες μέρες')
-    orders = models.CharField(u'Διατάξεις', null=True, blank=True, max_length=300)
-    description = models.CharField(null=True, blank=True, verbose_name=u'Περιγραφή', max_length=300)
-    for_non_permanents = models.BooleanField(null=False, blank=False, verbose_name=u'Μη μόνιμων', default=False)
+    not_paying = models.BooleanField(verbose_name=u'Χωρίς αποδοχές', default=None)
+    is_service = models.BooleanField(verbose_name=u'Χρόνος κανονικής υπηρεσίας', default=None)
+    only_working_days = models.BooleanField(verbose_name=u'Μόνο εργάσιμες μέρες', default=None)
+    orders = models.CharField(u'Διατάξεις', null=True, blank=True, max_length=3000)
+    subject_line = models.CharField(u'Θέμα', null=True, blank=True, max_length=300)
+    description = models.CharField(null=True, blank=True, verbose_name=u'Περιγραφή', max_length=3000)
+    notify_to = models.CharField(null=True, blank=True, verbose_name=u'Κοινοποίηση άδειας', max_length=300) 
+    for_non_permanents = models.BooleanField(null=False, blank=False, verbose_name=u'Αναπληρωτών', default=None)
     service_days_count = models.IntegerField(null=True, blank=True, max_length=3, verbose_name=u'Μέρες μετρήσιμης προϋπηρεσίας', default=0)
-
+    
+    
     def __unicode__(self):
         return self.name
 
@@ -553,9 +560,9 @@ class EmployeeManager(models.Manager):
     def get_by_natural_key(self, firstname, lastname, fathername, profession):
         return self.get(firstname=firstname, lastname=lastname, fathername=fathername, profession=profession)
 
-    def get_query_set(self):
+    def get_queryset(self):
         # select permanent if exists
-        return super(EmployeeManager, self).get_query_set().select_related('permanent')
+        return super(EmployeeManager, self).get_queryset().select_related('permanent')
 
 
 SEX_TYPES = ((u'Άνδρας', u'Άνδρας'),
@@ -584,11 +591,13 @@ class Employee(models.Model):
     address = models.CharField(u'Διεύθυνση - Οδός, Αριθμός', max_length=200, null=True, blank=True)
     address_postcode = models.CharField(u'Ταχ. Κωδικός', max_length=6, null=True, blank=True)
     address_city = models.CharField(u'Πόλη', max_length=30, null=True, blank=True)    
-    identity_number = NullableCharField(u'Αρ. Δελτίου Ταυτότητας', max_length=8, null=True, unique=True, blank=True)
+    identity_number = NullableCharField(u'Αρ. Δελτίου Ταυτότητας', max_length=9, null=True, unique=True, blank=True)
     transfer_area = models.ForeignKey(TransferArea, verbose_name=u'Περιοχή Μετάθεσης', null=True, blank=True)
-    recognised_experience = models.CharField(u'Προϋπηρεσία (ΕΕΜΜΗΗ)', null=True, blank=True, default='000000', max_length=8)
+    recognised_experience = models.CharField(u'Συνολική προϋπηρεσία (ΕΕΜΜΗΗ)', null=True, blank=True, default='000000', max_length=8)
+    salary_experience = models.CharField(u'Μισθολογική Προϋπηρεσία (ΕΕΜΜΗΗ)', null=True, blank=True, default='000000', max_length=8)
     # the following field needs to be added to the recognised experience
-    recognised_experience_n4354_2015 = models.CharField(u'Προϋπηρεσία Ν. 4354/2015-ΝΠΙΔ (ΕΕΜΜΗΗ)', null=True, blank=True, default='000000', max_length=8)
+    # the following field needs replace to the recognised experience
+    recognised_experience_n4354_2015 = models.CharField(u'Προϋπηρεσία Ν. 4354/2015 (ΕΕΜΜΗΗ)', null=True, blank=True, default='000000', max_length=8)
     # new field with filter
     recognised_experience_n4452_2017 = models.CharField(u'Προϋπηρεσία Ν. 4452/2017 Βαθμολογική (ΕΕΜΜΗΗ)', null=True, blank=True, default='000000', max_length=8)
     non_educational_experience = models.CharField(u'Εκτός Ωραρίου (ΕΕΜΜΗΗ)', null=True, blank=True, default='000000', max_length=8)
@@ -601,17 +610,19 @@ class Employee(models.Model):
     telephone_number2 = models.CharField(u'Αρ. Τηλεφώνου 2', max_length=14, null=True, blank=True)
     marital_status = models.IntegerField(u'Οικογενειακή Κατάσταση', null=True, blank=True, choices=MARITAL_TYPES)
     social_security_registration_number = models.CharField(u'Α.Μ.Κ.Α.', max_length=11, null=True, blank=True)
-    before_93 = models.BooleanField(u'Ασφαλισμένος πριν το 93', default=False)
-    has_family_subsidy = models.BooleanField(u'Οικογενειακό επίδομα', default=False)
+    before_93 = models.BooleanField(u'Ασφαλισμένος πριν το 93', default=0)
+    has_family_subsidy = models.BooleanField(u'Οικογενειακό επίδομα', default=0)
     other_social_security = models.ForeignKey(u'SocialSecurity', verbose_name=u'Άλλο ταμείο ασφάλισης', null=True, blank=True)
     organization_paying = models.ForeignKey(Organization, verbose_name=u'Οργανισμός μισθοδοσίας',related_name='organization_paying', null=True, blank=True)
     email = models.EmailField(null=True, blank=True)
     birth_date = models.DateField(u'Ημερομηνία Γέννησης',null=True, blank=True)
     hours_current = models.IntegerField(u'Τρέχων Ωράριο', max_length=2, null=True, blank=True)
     profession = models.ForeignKey(Profession, verbose_name=u'Ειδικότητα', related_name='employees')
+    second_profession = models.ForeignKey(Profession, verbose_name=u'Δεύτερη Ειδικότητα',null=True, blank=True)
+    second_profession_order = models.CharField(u'Απόφαση απόδοσης δεύτερης ειδικότητας', max_length=100, null=True, blank=True)
     placements = models.ManyToManyField(Organization, through='Placement', verbose_name=u'Σχολείο/Φορέας')
     leaves = models.ManyToManyField(Leave, through='EmployeeLeave')
-    extra_professions = models.ManyToManyField(Profession, through='EmployeeProfession')
+    #extra_professions = models.ManyToManyField(Profession, through='EmployeeProfession')
     responsibilities = models.ManyToManyField(Responsibility, through='EmployeeResponsibility')
     studies = models.ManyToManyField(DegreeCategory, through='EmployeeDegree')
     study_years = models.IntegerField(u'Έτη φοίτησης', max_length=1, null=True, blank=True,
@@ -621,7 +632,7 @@ class Employee(models.Model):
     ama = models.CharField(u'ΑΜΑ ΙΚΑ ΕΤΑΜ', max_length=10, null=True, blank=True)
     date_created = models.DateField(u'Ημερομηνία δημιουργίας', auto_now_add=True)
     date_modified = models.DateField(u'Τελευταία ενημέρωση', auto_now=True)
-    checked_service = models.BooleanField(u'Ελεγμένη προϋπηρεσία', default=False)
+    checked_service = models.BooleanField(u'Ελεγμένη προϋπηρεσία', default=0)
     citizenship_code = models.CharField(u'Κωδικός Υπηκοότητας', max_length=3, null=True, blank=True, default='048')
     photo = models.TextField(u'Φωτογραφία', blank=True, default=None)
     photo_type = models.CharField(u'Τύπος Φωτογραφίας', max_length=10, null=True, blank=True)
@@ -638,6 +649,13 @@ class Employee(models.Model):
     def profession_description(self):
         return self.profession.description
     profession_description.short_description = u'Λεκτικό ειδικότητας'
+
+    def second_profession_description(self):
+        if self.second_profession:
+            return self.second_profession.description 
+        else: 
+            return None
+    second_profession_description.short_description = u'Λεκτικό δεύτερης ειδικότητας'
 
     def last_placement(self):
         return first_or_none(Placement.objects.filter(
@@ -836,10 +854,24 @@ class PermanentManager(models.Manager):
         ids = [row[0] for row in cursor.fetchall()]
         return self.filter(parent_id__in=ids)
 
+    def permanent_post_in_organization_api(self, org_id):
+        cursor = connection.cursor()
+        cursor.execute(sql.serving_in_organization.format(org_id, datetime.date(datetime.date.today().year, 9, 1)))
+        ids = [row[0] for row in cursor.fetchall()]
+#        import pdb; pdb.set_trace()
+        return self.filter(parent_id__in=ids)
+
     def serving_in_organization(self, org_id):
         cursor = connection.cursor()
         cursor.execute(
             sql.serving_in_organization.format(org_id, datetime.date.today()))
+        ids = [row[0] for row in cursor.fetchall()]
+        return self.filter(parent_id__in=ids)
+
+    def serving_in_organization_api(self, org_id):
+        cursor = connection.cursor()
+        cursor.execute(
+            sql.serving_in_organization.format(org_id, datetime.date(datetime.date.today().year, 9, 1)))
         ids = [row[0] for row in cursor.fetchall()]
         return self.filter(parent_id__in=ids)
 
@@ -944,15 +976,27 @@ class Permanent(Employee):
         Δ.Ε.
         ΔΕ.01 Αρχιτεχνίτες 28
         ΔΕ.01 Τεχνίτες 30
+        ΕΙΔΙΚΟ ΕΚΠΑΙΔΕΥΤΙΚΟ ΠΡΟΣΩΠΙΚΟ ( 66082/Δ3/8-5-2018)
+        [u'ΠΕ21', u'ΠΕ22', u'ΠΕ23', u'ΠΕ25', u'ΠΕ28', u'ΠΕ29', u'ΠΕ30',u'ΠΕ31']
+         μεχρι 5 ετη -->25
+         μεχρι 10 ετη -->24
+         μεχρι 15 ετη -->23
+         μεχρι 20 ετη -->22
         """
+
         cat = self.profession.category()
+        CL = self.unified_profession()
         years = self.educational_service().years
         pe = [(5, 23), (11, 21), (19, 20), (50, 18)]
         te = [(6, 24), (12, 21), (19, 20), (50, 18)]
+        eep = [(4, 25), (9, 24), (14, 23), (19, 22), (50, 22)]
 
         get_hours = lambda sy, l: next((y, h) for y, h in l if sy <= y)[1]
 
-        if cat == u'ΠΕ':
+
+        if CL in [u'ΠΕ21', u'ΠΕ22', u'ΠΕ23', u'ΠΕ25', u'ΠΕ28', u'ΠΕ29', u'ΠΕ30',u'ΠΕ31']:
+            return get_hours(years, eep)
+        elif cat == u'ΠΕ':
             return get_hours(years, pe)
         elif cat == u'ΤΕ':
             return get_hours(years, te)
@@ -962,21 +1006,25 @@ class Permanent(Employee):
 
     # επόμενη μείωση ωραρίου σε διάστημα 
     def hours_next(self):
+        CL = self.unified_profession()
         cat = self.profession.category()
         years = self.educational_service().years
         months = self.educational_service().months
         days = self.educational_service().days
         pe = [(5, 23), (11, 21), (19, 20), (50, 18)]
         te = [(6, 24), (12, 21), (19, 20), (50, 18)]
+        eep = [(4, 25), (9, 24), (14, 23), (19, 22), (50, 22)]
         get_hours = lambda sy, l: next((y, h) for y, h in l if sy <= y)[0]
-        
-        if cat == u'ΠΕ':
+
+        if CL in [u'ΠΕ21', u'ΠΕ22', u'ΠΕ23', u'ΠΕ25', u'ΠΕ28', u'ΠΕ29', u'ΠΕ30', u'ΠΕ31']:
+            dt = DateInterval(days=30 - days, months=11 - months, years=get_hours(years, eep) - years)
+        elif cat == u'ΠΕ':
             dt = DateInterval(days=30-days, months=11-months, years=get_hours(years, pe)-years)
         elif cat == u'ΤΕ':
             dt = DateInterval(days=30-days, months=11-months, years=get_hours(years, te)-years)
         else:
             dt = None # DateInterval(days=0, months=0, years=0)
-        if self.hours() == 18:
+        if self.hours() == 18 or( CL in [u'ΠΕ21', u'ΠΕ22', u'ΠΕ23', u'ΠΕ25', u'ΠΕ28', u'ΠΕ29', u'ΠΕ30', u'ΠΕ31'] and  self.hours() == 22):
             return None #DateInterval(days=0, months=0, years=0)
         else:
             return dt
@@ -1001,6 +1049,7 @@ class Permanent(Employee):
         else:
             return '-'
     permanent_post.short_description = u'Οργανική θέση'
+
 
     def temporary_position(self):
         if self.has_permanent_post:
@@ -1028,7 +1077,7 @@ class Permanent(Employee):
         return (Date(self.date_hired) -
                 DateInterval(self.recognised_experience) +
                 DateInterval(days=self.total_not_service()))
-    payment_start_date_auto.short_description =  u'Μισθολογική αφετηρία (αυτόματη)'
+    payment_start_date_auto.short_description =  u'Αυτόματη αφετηρία διορισμού'
 
     def organization_serving(self):
         return Employee.organization_serving(self) or self.permanent_post()
@@ -1242,7 +1291,9 @@ class NonPermanentType(models.Model):
 
 class NonPermanentManager(models.Manager):
     def substitutes_in_transfer_area(self, area_id):
-        ids = [s.substitute_id for s in OrderedSubstitution.objects.filter(transfer_area=area_id)]
+        ids = []
+        for s in OrderedSubstitution.objects.filter(transfer_area=area_id):
+            ids.append(s.substitute_id)
         return self.filter(parent_id__in=ids)
 
     def substitutes_in_order(self, order_id):
@@ -1308,7 +1359,7 @@ class NonPermanent(Employee):
     objects = NonPermanentManager()
 
     parent = models.OneToOneField(Employee, parent_link=True)
-    pedagogical_sufficiency = models.BooleanField(u'Παιδαγωγική κατάρτιση', default=False)
+    pedagogical_sufficiency = models.BooleanField(u'Παιδαγωγική κατάρτιση', default=None)
     social_security_number = models.CharField(u'Αριθμός Ι.Κ.Α.', max_length=10, null=True, blank=True)
     profession_code_oaed = models.CharField(u'Κωδικός ειδικότητας ΟΑΕΔ', max_length=10, null=True, blank=True)
     show_exp_report = models.NullBooleanField(u'Εμφάνιση Προϋπηρεσίας - Απόλυσης', null=True, blank=True, default=True)
@@ -1473,7 +1524,7 @@ class School(Organization):
     code = models.IntegerField(u'Κωδικός Σχολείου', max_length=5, unique=True)
     # γενικό λύκειο, γυμνάσιο, επαλ...
     type = models.ForeignKey(SchoolType, verbose_name=u'Κατηγορία')
-    inaccessible = models.BooleanField(u'Δυσπρόσιτο', default=False)
+    inaccessible = models.BooleanField(u'Δυσπρόσιτο', default=None)
     address = models.CharField(u'Διεύθυνση', max_length=200, null=True, blank=True)
     post_code = models.CharField(u'Τ.Κ.', max_length=5, null=True, blank=True)
     telephone_number = models.CharField(u'Αρ. Τηλεφώνου', max_length=14, null=True, blank=True)
@@ -1691,104 +1742,104 @@ class SubstitutePlacement(Placement):
                                           choices=OAED_CHOICES)
 
 
-class NonPermanentLeave(models.Model):
+#class NonPermanentLeave(models.Model):
 
-    class Meta:
-        verbose_name = u'Άδεια Αναπληρωτή/Ωρoμίσθιου'
-        verbose_name_plural = u'Άδειες Αναπληρωτή/Ωρoμίσθιου'
-        ordering = ['-date_to']
+#    class Meta:
+#        verbose_name = u'Άδεια Αναπληρωτή/Ωρoμίσθιου'
+#        verbose_name_plural = u'Άδειες Αναπληρωτών/Ωρoμισθίων'
+#        ordering = ['-date_to']
+#
+#    non_permanent = models.ForeignKey(NonPermanent, verbose_name=u'Υπάλληλος')
+#    leave = models.ForeignKey(Leave, verbose_name=u'Κατηγορία Άδειας')
+#    date_issued = models.DateField(u'Χορήγηση', null=True, blank=True)
+#    date_from = models.DateField(u'Έναρξη')
+#    date_to = models.DateField(u'Λήξη')
+#    order = models.CharField(u'Απόφαση', max_length=300, null=True, blank=True)
+#    authority = models.CharField(u'Αρχή έγκρισης', max_length=200, null=True, blank=True)
+#    protocol_number = models.CharField(u'Αρ. πρωτ.', max_length=10, null=True, blank=True)
+#    description = models.CharField(u'Σημειώσεις', null=True, blank=True, max_length=300)
+#    duration = models.IntegerField(max_length=3, verbose_name=u'Διάρκεια')
 
-    non_permanent = models.ForeignKey(NonPermanent, verbose_name=u'Υπάλληλος')
-    leave = models.ForeignKey(Leave, verbose_name=u'Κατηγορία Άδειας')
-    date_issued = models.DateField(u'Χορήγηση', null=True, blank=True)
-    date_from = models.DateField(u'Έναρξη')
-    date_to = models.DateField(u'Λήξη')
-    order = models.CharField(u'Απόφαση', max_length=300, null=True, blank=True)
-    authority = models.CharField(u'Αρχή έγκρισης', max_length=200, null=True, blank=True)
-    protocol_number = models.CharField(u'Αρ. πρωτ.', max_length=10, null=True, blank=True)
-    description = models.CharField(u'Σημειώσεις', null=True, blank=True, max_length=300)
-    duration = models.IntegerField(max_length=3, verbose_name=u'Διάρκεια')
+#    @shorted(15)
+#    def category(self):
+#        return self.leave.name
+#    category.short_description = u'Κατηγορία'
 
-    @shorted(15)
-    def category(self):
-        return self.leave.name
-    category.short_description = u'Κατηγορία'
+#    def affects_payment(self):
+#        return self.leave.not_paying or self.leaveperiod_set.exclude(payment='yes').count() > 0
 
-    def affects_payment(self):
-        return self.leave.not_paying or self.leaveperiod_set.exclude(payment='yes').count() > 0
+#    def organization_serving(self):
+#        return self.employee.subclass().organization_serving()
+#    organization_serving.short_description = u'Θέση υπηρεσίας'
 
-    def organization_serving(self):
-        return self.employee.subclass().organization_serving()
-    organization_serving.short_description = u'Θέση υπηρεσίας'
+#    def profession(self):
+#        return self.non_permanent.profession
+#    profession.short_description = u'Ειδικότητα'
 
-    def profession(self):
-        return self.non_permanent.profession
-    profession.short_description = u'Ειδικότητα'
+#    def period_description(self):
+#        periods = self.leaveperiod_set.all()
+#        if len(periods) > 0:
+#            if len(periods) > 1:
+#                desc = u"%s ημερών για τα διαστήματα %s " %(self.duration, u", ".join(map(unicode, periods)))
+#            else:
+#                desc = u", ".join(map(unicode, periods))
+#        else:
+#            if self.leave.not_paying:
+#                s = u"χωρίς αποδοχές"
+#            else:
+#                s = u"με αποδοχές"
+#            if self.duration == 1:
+#                dur_desc = u"ημέρα"
+#            else:
+#                dur_desc = u"ημέρες"
 
-    def period_description(self):
-        periods = self.leaveperiod_set.all()
-        if len(periods) > 0:
-            if len(periods) > 1:
-                desc = u"%s ημερών για τα διαστήματα %s " %(self.duration, u", ".join(map(unicode, periods)))
-            else:
-                desc = u", ".join(map(unicode, periods))
-        else:
-            if self.leave.not_paying:
-                s = u"χωρίς αποδοχές"
-            else:
-                s = u"με αποδοχές"
-            if self.duration == 1:
-                dur_desc = u"ημέρα"
-            else:
-                dur_desc = u"ημέρες"
+#            desc = u"από %s έως %s (%s %s %s)" % (self.date_from, self.date_to, self.duration, dur_desc, s)
+#        return desc
 
-            desc = u"από %s έως %s (%s %s %s)" % (self.date_from, self.date_to, self.duration, dur_desc, s)
-        return desc
+#    def clean(self):
+#        from django.core.exceptions import ValidationError
+#        if hasattr(self, 'leave') and hasattr(self, 'non_permanent'):
+#            limit = self.non_permanent.normal_leave_days()
 
-    def clean(self):
-        from django.core.exceptions import ValidationError
-        if hasattr(self, 'leave') and hasattr(self, 'non_permanent'):
-            limit = self.non_permanent.normal_leave_days()
+#            if self.leave.name == u'Κανονική':
+#                y = self.date_from.year
+#                dur = EmployeeLeave.objects.filter(
+#                    employee=self.non_permanent, leave=self.leave, date_from__gte=current_year_date_from(),
+#                    date_to__lte=current_year_date_to()
+#                ).exclude(id=self.id).aggregate(Sum('duration'))['duration__sum'] or 0
 
-            if self.leave.name == u'Κανονική':
-                y = self.date_from.year
-                dur = EmployeeLeave.objects.filter(
-                    employee=self.non_permanent, leave=self.leave, date_from__gte=current_year_date_from(),
-                    date_to__lte=current_year_date_to()
-                ).exclude(id=self.id).aggregate(Sum('duration'))['duration__sum'] or 0
-
-                msg = u'Οι ημέρες κανονικής άδειας ξεπερνούν τις {0}. Μέρες χωρίς την τρέχουσα άδεια: {1}'
-                if dur + self.duration > limit:
-                    raise ValidationError(msg.format(limit, dur))
-
-
-    def __unicode__(self):
-        return unicode(self.non_permanent) + '-' + unicode(self.date_from)
+#                msg = u'Οι ημέρες κανονικής άδειας ξεπερνούν τις {0}. Μέρες χωρίς την τρέχουσα άδεια: {1}'
+#                if dur + self.duration > limit:
+#                    raise ValidationError(msg.format(limit, dur))
 
 
+#    def __unicode__(self):
+#        return unicode(self.non_permanent) + '-' + unicode(self.date_from)
 
-LEAVE_PERIOD_CHOICES = (('no', u'Χωρίς Αποδοχές'),
-                        ('yes', u'Με Αποδοχές'),
-                        ('half', u'Μισές Αποδοχές'))
 
-class LeavePeriod(models.Model):
 
-    class Meta:
-        verbose_name = u'Χρονικό Διάστημα'
-        verbose_name_plural = u'Χρονικά Διαστήματα'
+#LEAVE_PERIOD_CHOICES = (('no', u'Χωρίς Αποδοχές'),
+#                        ('yes', u'Με Αποδοχές'),
+#                        ('half', u'Μισές Αποδοχές'))
 
-    date_from = models.DateField(u'Έναρξη')
-    date_to = models.DateField(u'Λήξη')
-    duration = models.IntegerField(max_length=3, verbose_name=u'Διάρκεια')
-    payment = models.CharField(u'Καθεστώς Πληρωμής', max_length=10, choices=LEAVE_PERIOD_CHOICES)
-    leave = models.ForeignKey(NonPermanentLeave, verbose_name=u'Άδεια')
+#class LeavePeriod(models.Model):
 
-    def __unicode__(self):
-        if self.duration == 1:
-            dur_desc = u"ημέρα"
-        else:
-            dur_desc = u"ημέρες"
-        return u"από %s έως %s (%s %s, %s)" % (self.date_from, self.date_to, self.duration, dur_desc, dict(LEAVE_PERIOD_CHOICES)[self.payment].lower())
+#    class Meta:
+#        verbose_name = u'Χρονικό Διάστημα'
+#        verbose_name_plural = u'Χρονικά Διαστήματα'
+
+#    date_from = models.DateField(u'Έναρξη')
+#    date_to = models.DateField(u'Λήξη')
+#    duration = models.IntegerField(max_length=3, verbose_name=u'Διάρκεια')
+#    payment = models.CharField(u'Καθεστώς Πληρωμής', max_length=10, choices=LEAVE_PERIOD_CHOICES)
+#    leave = models.ForeignKey(NonPermanentLeave, verbose_name=u'Άδεια')
+
+#    def __unicode__(self):
+#        if self.duration == 1:
+#            dur_desc = u"ημέρα"
+#        else:
+#            dur_desc = u"ημέρες"
+#        return u"από %s έως %s (%s %s, %s)" % (self.date_from, self.date_to, self.duration, dur_desc, dict(LEAVE_PERIOD_CHOICES)[self.payment].lower())
 
 
 class EmployeeLeaveManager(models.Manager):
@@ -1904,7 +1955,55 @@ class EmployeeLeave(models.Model):
     def __unicode__(self):
         return unicode(self.employee) + '-' + unicode(self.date_from)
 
+    
+class PermanentLeaveManager(models.Manager):        
+    def get_queryset(self):
+	ids = Permanent.objects.all().values_list("parent_id", flat=True)
+        return super(PermanentLeaveManager, self).get_queryset().filter(employee_id__in=ids)
 
+
+class PermanentLeave(EmployeeLeave):
+
+    class Meta:
+        proxy = True
+	verbose_name = u'Άδεια Μόνιμου Εκπαιδευτικού'
+	verbose_name_plural = u'Άδειες Μόνιμων Εκπαιδευτικών'
+
+    objects = PermanentLeaveManager()
+
+
+class NonPermanentLeaveManager(models.Manager):
+    def get_queryset(self):
+        ids = NonPermanent.objects.all().values_list("parent_id", flat=True)
+        return super(NonPermanentLeaveManager, self).get_queryset().filter(employee_id__in=ids)
+
+
+class NonPermanentLeave(EmployeeLeave):
+
+    class Meta:
+	proxy = True
+	verbose_name = u'Άδεια Αναπληρωτή Εκπαιδευτικού'
+	verbose_name_plural = u'Άδειες Αναπληρωτων Εκπαιδευτικών'
+
+    objects = NonPermanentLeaveManager()
+
+
+class AdministrativeLeaveManager(models.Manager):
+    def get_queryset(self):
+        ids = Administrative.objects.all().values_list("parent_id", flat=True)
+        return super(AdministrativeLeaveManager, self).get_queryset().filter(employee_id__in=ids)
+
+
+class AdministrativeLeave(EmployeeLeave):
+
+    class Meta:
+        proxy = True
+	verbose_name = u'Άδεια Διοικητικού'
+        verbose_name_plural = u'Άδειες Διοικητικών'
+
+    objects = AdministrativeLeaveManager()
+    
+    
 class EmployeeResponsibility(models.Model):
 
     class Meta:
@@ -1948,8 +2047,8 @@ class EmployeeDegree(models.Model):
     score = models.CharField(u'Βαθμός', max_length=20, null=True, blank=True)
     degree_number = models.CharField(u'Αρ. πιστοποιητικού', max_length=20, null=True, blank=True)
     organization = models.ForeignKey(DegreeOrganization, verbose_name=u'Φορέας Πιστοποίησης', null=True)
-    checked = models.BooleanField(u'Ελεγμένο', default=False)
-    relevance = models.BooleanField(u'Συνάφεια', default=False)
+    checked = models.BooleanField(u'Ελεγμένο', default=None)
+    relevance = models.BooleanField(u'Συνάφεια', default=None)
 
     def __unicode__(self):
         return self.name
@@ -2016,7 +2115,7 @@ class NonPermanentInsuranceFile(models.Model):
     xls_file2 = models.FileField(u'Αρχείο 2ου μήνα', upload_to="xlsfiles")
     xls_file3 = models.FileField(u'Αρχείο 3ου μήνα', upload_to="xlsfiles")
     description = models.CharField(u'Περιγραφή', max_length=255)
-    status = models.BooleanField(u'Κατάσταση', blank=True)
+    status = models.BooleanField(u'Κατάσταση', blank=True, default=None)
 
     def __unicode__(self):
         return self.description

@@ -26,6 +26,21 @@ def permanent(request):
     except Exception as e:
         return HttpResponse(json.dumps({"data":[], "error": e.message}))
 
+def schools(request):
+    try:
+        if 'key' in request.GET and request.GET['key'] == SETTINGS['api_key']:
+            sch = School.objects.all().exclude(email__exact='')
+            data = {"data":
+                    [{"name": unicode(k.name),
+                      "email": k.email,
+                      "code": k.code} for k in sch],
+                    "error": "" }
+
+            return HttpResponse(json.dumps(data), content_type='application/json')
+        else:
+            return HttpResponse(json.dumps({"data":[], "error": "parameters error"}))
+    except Exception as e:
+        return HttpResponse(json.dumps({"data":[], "error": e.message}))
 
 def schoolposts(request):
     try:
@@ -45,11 +60,26 @@ def schoolposts(request):
             else:
                 sch = None
             if request.GET['service'] == "organizational" and sch is not None:
-                prm = Permanent.objects.permanent_post_in_organization(school_found)\
-                                   .filter(currently_serves=True, has_permanent_post=True)
+                l = []
+                prm = Permanent.objects.permanent_post_in_organization_api(school_found)\
+                                   .filter(currently_serves=True)#, has_permanent_post=True)
+                for o in prm:
+                    try:
+                        if o.permanent_post().date_to is not None:
+                            if o.permanent_post().date_to < datetime.date(datetime.date.today().year, 9, 1):
+                                l.append(o.id)
+                    except Exception as err:
+                        print o
+                        print(type(err))    # the exception type
+                        print(err.args)     # arguments stored in .args
+                        print(err) 
+                prm = Permanent.objects.permanent_post_in_organization_api(school_found)\
+                                   .filter(currently_serves=True).exclude(pk__in=l)
+                
             elif request.GET['service'] == "operational" and sch is not None:
-                prm = Permanent.objects.serving_in_organization(school_found)\
-                                   .filter(currently_serves=True, has_permanent_post=True)
+                prm = Permanent.objects.serving_in_organization_api(school_found)\
+                                   .filter(currently_serves=True)
+                                           #, has_permanent_post=True)
             else:
                 prm = None
             if sch is not None and prm is not None:
@@ -87,7 +117,7 @@ def schoolposts(request):
                     "sector": sch_sector,
                     "error": "" }
 
-                return HttpResponse(json.dumps(data), mimetype='application/json')
+                return HttpResponse(json.dumps(data), content_type='application/json')
             else:
                 return HttpResponse(json.dumps({"data":[], "error": "parameters error"}))
 

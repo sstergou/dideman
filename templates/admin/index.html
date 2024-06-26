@@ -22,6 +22,21 @@
 
 <div id="content-related">
     <div class="module" id="recent-actions-module">
+        <h2>Πληροφορίες</h2>
+	    <h3><b>Αλλαγές 28/12/2023:</b></h3>
+            <p>Αλλαγές στις άδειες. Καλύτερη υποστήριξη όλων των τύπων υπαλλήλων</p>
+            <p></p>
+            <h3><b>Αλλαγές 13/11/2023:</b></h3>
+            <p>Νέο πεδίο "Δεύτερη Ειδικότητα". Υποστήριξη νέων ταυτοτήτων (9 ψηφία)</p>
+            <p></p>	
+	    <h3><b>Αλλαγές 21/08/2023:</b></h3>
+            <p>Εισαγωγή στοιχείων 395 μονίμων. (Μαζικά)</p>
+	    <p></p>
+	    <h3><b>Αλλαγές 29/06/2023:</b></h3>
+            <p>Ενημέρωση στοιχείων μονίμων. (Μαζικά) 
+	    Ενημέρωση πεδίων προϋπηρεσίας</p>
+    </div>
+    <div class="module" id="recent-actions-module">
         <h2>{% trans 'Recent Actions' %}</h2>
         <h3>{% trans 'My Actions' %}</h3>
             {% load log %}
@@ -49,7 +64,7 @@
             {% endif %}
     </div>
     <div class="module" id="recent-actions-module">
-    <h2>Στατιστικά Στοιχεία {{ yf }}-{{ yt }}</h2>
+    <h2>Στατιστικά  {{ yf }}-{{ yt }}</h2>
         <h3>{{ total_permanent }} Μόνιμοι εκπαιδευτικοί</h3>
         <h3>{{ total_nonpermanent }} Αναπληρωτές εκπαιδευτικοί</h3>
         <h3><hr></h3>
@@ -61,6 +76,8 @@
         <h2>Στοιχεία εγγραφών</h2>
             <h3>{{ photo_total }} με φωτογραφίες</h3>
             <h3>{{ today_mod_total }} ενημερώθηκαν σήμερα</h3>
+            <h3><hr></h3>
+            <h3>{{ total_dbl }} διπλές εγγραφές μονίμων/αναπληρωτών</h3>
         </div>
 
     {% endif %}
@@ -69,7 +86,7 @@
 {% block footer %}
 <div class="fixed_footer">
       <div id="footer" class="" style="position: relative; bottom: 0;">
-	<p class="tiny">Κατασκευή 2012 - 2019 Στάθης Στέργου, Βασίλης Κασαπίδης - {{ django_version }}</p>
+	<p class="tiny">Κατασκευή 2012 - 2016 Στάθης Στέργου, 2012 - 2022 Βασίλης Κασαπίδης - {{ django_version }}</p>
       </div>
     </div>
 {% endblock %}
