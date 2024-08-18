@@ -237,10 +237,10 @@ def generate_pdf_structure(reports):
         elements.append(Paragraph(u' ', heading_style['Spacer']))
 
         if report['report_type'] == '0':
-            elements.append(Paragraph(u'ΒΕΒΑΙΩΣΗ ΑΠΟΔΟΧΩΝ',
-                                      heading_style['Center']))
+            #elements.append(Paragraph(u'ΒΕΒΑΙΩΣΗ ΑΠΟΔΟΧΩΝ',
+            #                          heading_style['Center']))
             if report['type'] > 12:
-                elements.append(Paragraph(u'Αποδοχές %s %s' %
+                elements.append(Paragraph(u'Βεβαίωση Αποδοχών %s %s' %
                                           (report['type'], report['year']),
                                           heading_style["Center"]))
             else:
