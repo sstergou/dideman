@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# import by field.
+# find dublicates.
 # usage
 # find_dbls --f <xls file> --y <year of active personnel> --ci <column_index> --ws <sheet index>
 # assumes 1st xls column as registration_number
