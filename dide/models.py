@@ -596,7 +596,8 @@ class Employee(models.Model):
     recognised_experience = models.CharField(u'Συνολική προϋπηρεσία (ΕΕΜΜΗΗ)', null=True, blank=True, default='000000', max_length=8)
     salary_experience = models.CharField(u'Μισθολογική Προϋπηρεσία (ΕΕΜΜΗΗ)', null=True, blank=True, default='000000', max_length=8)
     # the following field needs to be added to the recognised experience
-    recognised_experience_n4354_2015 = models.CharField(u'Προϋπηρεσία Ν. 4354/2015-ΝΠΙΔ (ΕΕΜΜΗΗ)', null=True, blank=True, default='000000', max_length=8)
+    # the following field needs replace to the recognised experience
+    recognised_experience_n4354_2015 = models.CharField(u'Προϋπηρεσία Ν. 4354/2015 (ΕΕΜΜΗΗ)', null=True, blank=True, default='000000', max_length=8)
     # new field with filter
     recognised_experience_n4452_2017 = models.CharField(u'Προϋπηρεσία Ν. 4452/2017 Βαθμολογική (ΕΕΜΜΗΗ)', null=True, blank=True, default='000000', max_length=8)
     non_educational_experience = models.CharField(u'Εκτός Ωραρίου (ΕΕΜΜΗΗ)', null=True, blank=True, default='000000', max_length=8)
@@ -975,15 +976,27 @@ class Permanent(Employee):
         Δ.Ε.
         ΔΕ.01 Αρχιτεχνίτες 28
         ΔΕ.01 Τεχνίτες 30
+        ΕΙΔΙΚΟ ΕΚΠΑΙΔΕΥΤΙΚΟ ΠΡΟΣΩΠΙΚΟ ( 66082/Δ3/8-5-2018)
+        [u'ΠΕ21', u'ΠΕ22', u'ΠΕ23', u'ΠΕ25', u'ΠΕ28', u'ΠΕ29', u'ΠΕ30',u'ΠΕ31']
+         μεχρι 5 ετη -->25
+         μεχρι 10 ετη -->24
+         μεχρι 15 ετη -->23
+         μεχρι 20 ετη -->22
         """
+
         cat = self.profession.category()
+        CL = self.unified_profession()
         years = self.educational_service().years
         pe = [(5, 23), (11, 21), (19, 20), (50, 18)]
         te = [(6, 24), (12, 21), (19, 20), (50, 18)]
+        eep = [(4, 25), (9, 24), (14, 23), (19, 22), (50, 22)]
 
         get_hours = lambda sy, l: next((y, h) for y, h in l if sy <= y)[1]
 
-        if cat == u'ΠΕ':
+
+        if CL in [u'ΠΕ21', u'ΠΕ22', u'ΠΕ23', u'ΠΕ25', u'ΠΕ28', u'ΠΕ29', u'ΠΕ30',u'ΠΕ31']:
+            return get_hours(years, eep)
+        elif cat == u'ΠΕ':
             return get_hours(years, pe)
         elif cat == u'ΤΕ':
             return get_hours(years, te)
@@ -993,21 +1006,25 @@ class Permanent(Employee):
 
     # επόμενη μείωση ωραρίου σε διάστημα 
     def hours_next(self):
+        CL = self.unified_profession()
         cat = self.profession.category()
         years = self.educational_service().years
         months = self.educational_service().months
         days = self.educational_service().days
         pe = [(5, 23), (11, 21), (19, 20), (50, 18)]
         te = [(6, 24), (12, 21), (19, 20), (50, 18)]
+        eep = [(4, 25), (9, 24), (14, 23), (19, 22), (50, 22)]
         get_hours = lambda sy, l: next((y, h) for y, h in l if sy <= y)[0]
-        
-        if cat == u'ΠΕ':
+
+        if CL in [u'ΠΕ21', u'ΠΕ22', u'ΠΕ23', u'ΠΕ25', u'ΠΕ28', u'ΠΕ29', u'ΠΕ30', u'ΠΕ31']:
+            dt = DateInterval(days=30 - days, months=11 - months, years=get_hours(years, eep) - years)
+        elif cat == u'ΠΕ':
             dt = DateInterval(days=30-days, months=11-months, years=get_hours(years, pe)-years)
         elif cat == u'ΤΕ':
             dt = DateInterval(days=30-days, months=11-months, years=get_hours(years, te)-years)
         else:
             dt = None # DateInterval(days=0, months=0, years=0)
-        if self.hours() == 18:
+        if self.hours() == 18 or( CL in [u'ΠΕ21', u'ΠΕ22', u'ΠΕ23', u'ΠΕ25', u'ΠΕ28', u'ΠΕ29', u'ΠΕ30', u'ΠΕ31'] and  self.hours() == 22):
             return None #DateInterval(days=0, months=0, years=0)
         else:
             return dt
@@ -1274,7 +1291,9 @@ class NonPermanentType(models.Model):
 
 class NonPermanentManager(models.Manager):
     def substitutes_in_transfer_area(self, area_id):
-        ids = [s.substitute_id for s in OrderedSubstitution.objects.filter(transfer_area=area_id)]
+        ids = []
+        for s in OrderedSubstitution.objects.filter(transfer_area=area_id):
+            ids.append(s.substitute_id)
         return self.filter(parent_id__in=ids)
 
     def substitutes_in_order(self, order_id):
