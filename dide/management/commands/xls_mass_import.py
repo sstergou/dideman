@@ -62,6 +62,22 @@ class Command(BaseCommand):
                         dob = datetime(*xlrd.xldate_as_tuple(worksheet.cell_value(curr_row,20),0))
                     except:
                         pass
+                    d_h = None
+                    try:
+                        d_h = datetime(*xlrd.xldate_as_tuple(worksheet.cell_value(curr_row,22),0))
+                    except:
+                        pass
+                    b93 = 0
+                    try:
+                        b93 = int(unicode(worksheet.cell_value(curr_row,19))[:1])
+                    except:
+                        pass
+                    tn1 = ""
+                    try:
+                        tn1 = int(unicode(worksheet.cell_value(curr_row,16))[:10])
+                    except:
+                        pass
+                    
                     iban_in = ""
                     if worksheet.cell_value(curr_row,15) != "":
                         iban_in = unicode(worksheet.cell_value(curr_row,15)).replace(" ","")
@@ -74,7 +90,7 @@ class Command(BaseCommand):
                                       profession=Profession.objects.get(pk=unicode(worksheet.cell_value(curr_row,5))), #fix
                                       sex=sex_t,
                                       transfer_area=TransferArea.objects.get(pk=t_area), #fix
-                                      telephone_number1=int(unicode(worksheet.cell_value(curr_row,16))[:10]),
+                                      telephone_number1=tn1,
                                       email=unicode(worksheet.cell_value(curr_row,14)),
                                       order_hired=unicode(worksheet.cell_value(curr_row,23)),
                                       address=unicode(worksheet.cell_value(curr_row,7)),
@@ -83,8 +99,8 @@ class Command(BaseCommand):
                                       tax_office=unicode(worksheet.cell_value(curr_row,13)),
                                       iban=iban_in,
                                       marital_status=mar_s,
-                                      before_93=int(unicode(worksheet.cell_value(curr_row,19))[:1]), 
-                                      date_hired=datetime(*xlrd.xldate_as_tuple(worksheet.cell_value(curr_row,22),0)), #fix
+                                      before_93=b93, 
+                                      date_hired=d_h, #fix
                                       identity_number=id_no,
                                       social_security_registration_number=str(worksheet.cell_value(curr_row,18)).replace(".0",""),
                                       birth_date=dob)                        
